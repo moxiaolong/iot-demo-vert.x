@@ -30,18 +30,18 @@ public class MainVerticle extends AbstractVerticle {
     public void start(Promise<Void> startPromise) {
         InfluxDbConfig influxDbConfig = new InfluxDbConfig("http://localhost:8086", "root", "root");
 
-        JsonObject dbConfig = new JsonObject().put("url", "jdbc:sqlite:test.db").put("driver_class", "org.sqlite.JDBC").put("max_pool_size", 16);
+        JsonObject sqliteConfig = new JsonObject().put("url", "jdbc:sqlite:test.db").put("driver_class", "org.sqlite.JDBC").put("max_pool_size", 16);
 
-        JDBCPool pool = JDBCPool.pool(vertx,
+        JDBCPool jdbcPool = JDBCPool.pool(vertx,
                 // configure the connection
-                dbConfig);
+                sqliteConfig);
 
         //建立MQ连接
-        MqttClient client = MqttClient.create(vertx);
-        client.connect(1883, "localhost", str -> {
+        MqttClient mqttClient = MqttClient.create(vertx);
+        mqttClient.connect(1883, "localhost", str -> {
             System.out.println("mqtt 1883 connected");
             //添加订阅
-            client.publishHandler(s -> {
+            mqttClient.publishHandler(s -> {
                 System.out.println(s.payload().toString());
             }).subscribe("test", 2);
         });
@@ -61,15 +61,15 @@ public class MainVerticle extends AbstractVerticle {
                 //保存至Influx
                 influxDbConfig.insert("test", "temperature", tagMap, filedMap);
                 //发送至MQ
-                client.publish("test", Buffer.buffer(String.valueOf(temperature)), MqttQoS.AT_LEAST_ONCE, false, false);
-                pool.query("update temperature_data set temperature=" + temperature + " where id =1").execute().onSuccess(rows -> {
+                mqttClient.publish("test", Buffer.buffer(String.valueOf(temperature)), MqttQoS.AT_LEAST_ONCE, false, false);
+                jdbcPool.query("update temperature_data set temperature=" + temperature + " where id =1").execute().onSuccess(rows -> {
                 }).onFailure(Throwable::printStackTrace);
                 return data;
             }));
         });
 
         router.get("/queryResult").respond(routingContext -> Future.fromCompletionStage(CompletableFuture.supplyAsync(() -> {
-            return influxDbConfig.query("test", "SELECT MEAN(temperature) FROM \"temperature\" WHERE time > now() - 20m");
+            return influxDbConfig.query("test", "SELECT MEAN(temperature) FROM temperature WHERE time > now() - 20m");
         })));
 
         router.get("/testBlock").respond((routingContext) -> {
