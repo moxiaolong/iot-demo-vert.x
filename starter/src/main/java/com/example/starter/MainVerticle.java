@@ -87,7 +87,7 @@ public class MainVerticle extends AbstractVerticle {
             return testBlockResult;
         });
 
-        vertx.createHttpServer().requestHandler(router).listen(8080, http -> {
+        vertx.createHttpServer().requestHandler(router).listen(8084, http -> {
             if (http.succeeded()) {
                 startPromise.complete();
                 System.out.println("HTTP server started on port 8080");
