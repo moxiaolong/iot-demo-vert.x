@@ -63,6 +63,7 @@ public class MainVerticle extends AbstractVerticle {
                 //发送至MQ
                 mqttClient.publish("test", Buffer.buffer(String.valueOf(temperature)), MqttQoS.AT_LEAST_ONCE, false, false);
                 jdbcPool.query("update temperature_data set temperature=" + temperature + " where id =1").execute().onSuccess(rows -> {
+                    log.info("update success");
                 }).onFailure(Throwable::printStackTrace);
                 return data;
             }));
