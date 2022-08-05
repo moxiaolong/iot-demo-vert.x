@@ -11,6 +11,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.jdbcclient.JDBCPool;
 import io.vertx.mqtt.MqttClient;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 
 import java.util.HashMap;
 import java.util.Random;
@@ -57,16 +59,13 @@ public class MainVerticle extends AbstractVerticle {
             tagMap.put("id", "1");
             HashMap<String, Object> filedMap = new HashMap<>(1);
             filedMap.put("temperature", temperature);
-            return Future.fromCompletionStage(CompletableFuture.supplyAsync(() -> {
-                //保存至Influx
-                influxDbConfig.insert("test", "temperature", tagMap, filedMap);
-                //发送至MQ
-                mqttClient.publish("test", Buffer.buffer(String.valueOf(temperature)), MqttQoS.AT_LEAST_ONCE, false, false);
-                jdbcPool.query("update temperature_data set temperature=" + temperature + " where id =1").execute().onSuccess(rows -> {
-                    log.info("update success");
-                }).onFailure(Throwable::printStackTrace);
-                return data;
-            }));
+            //保存至Influx
+            influxDbConfig.insert("test", "temperature", tagMap, filedMap);
+            //发送至MQ
+            mqttClient.publish("test", Buffer.buffer(String.valueOf(temperature)), MqttQoS.AT_LEAST_ONCE, false, false);
+            Future<RowSet<Row>> execute = jdbcPool.query("update temperature_data set temperature=" + temperature + " where id =1").execute();
+            execute.result();
+            return routingContext.response().write(String.valueOf(temperature));
         });
 
         router.get("/queryResult").respond(routingContext -> Future.fromCompletionStage(CompletableFuture.supplyAsync(() -> {
