@@ -65,7 +65,8 @@ public class MainVerticle extends AbstractVerticle {
             mqttClient.publish("test", Buffer.buffer(String.valueOf(temperature)), MqttQoS.AT_LEAST_ONCE, false, false);
             Future<RowSet<Row>> execute = jdbcPool.query("update temperature_data set temperature=" + temperature + " where id =1").execute();
             RowSet<Row> result = execute.result();
-            return Future.fromCompletionStage(CompletableFuture.supplyAsync(()-> result));
+            log.info(result);
+            return Future.fromCompletionStage(CompletableFuture.supplyAsync(() -> result));
         });
 
         router.get("/queryResult").respond(routingContext -> Future.fromCompletionStage(CompletableFuture.supplyAsync(() -> {
